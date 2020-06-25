@@ -1,0 +1,1034 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.Data.SqlClient;
+using System.IO;
+using System.Threading;
+
+namespace 狮子座
+{
+    public partial class Form1 : Form
+    {
+        public Form1()                                     //开场动画
+        {
+            InitializeComponent();
+            Thread th = new Thread(new ThreadStart(DoSplash));
+            th.Start();
+            Thread.Sleep(2000);
+            th.Abort();
+            Thread.Sleep(500);
+        }
+        
+        private void DoSplash()                            //开场动画
+        {
+           splash_screen sp = new splash_screen();
+           sp.ShowDialog();
+        }
+        
+        private void Form1_Load(object sender, EventArgs e)//打开特效
+        {
+            for (double d = 0.25; d < 1.25; d = d + 0.25)
+            {
+                System.Threading.Thread.Sleep(1);
+                Application.DoEvents();
+                this.Opacity = d;
+                this.Refresh();
+            }
+        }
+        
+        protected override void OnClosing(CancelEventArgs e)//关闭软件
+        {
+            
+
+            DialogResult result = MessageBox.Show("是否确认关闭？", "警告",
+                           MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+           
+            if (e.Cancel = result != DialogResult.Yes)
+            {
+                return;
+            }
+            else
+            {
+                dataGridView1.Rows.Clear();
+                dataGridView3.Rows.Clear();
+                textBox1.Clear();
+                textBox2.Clear();
+                comboBox1.SelectedIndex = -1;
+                radioButton1.Checked = false;
+                radioButton2.Checked = false;
+                dataGridView2.Rows.Clear();
+                dataGridView4.Rows.Clear();
+                textBox3.Clear();
+                textBox4.Clear();
+                comboBox2.SelectedIndex = -1;
+                radioButton3.Checked = false;
+                radioButton4.Checked = false;
+                for (double d = 1; d > 0; d = d - 0.25)
+                {
+                    System.Threading.Thread.Sleep(1);
+                    Application.DoEvents();
+                    this.Opacity = d;
+                    this.Refresh();
+
+                }
+                base.OnClosing(e);
+            }
+            
+        }
+
+
+        public double jiao2hu(double d, double m, double s)  //度分秒格式角化弧
+        {
+            double  r, R;
+            r = d  + m / 60 + s/3600;
+            R = r*Math.PI/180;
+            return R;
+        }
+        
+        public double jiaohuahu(double D)                    //小数格式角化弧
+        {
+            double R;
+            
+            R = D*Math.PI/180;
+            return R;
+        }
+        
+        public double[] hu2jiao(double rad)                 //度分秒格式弧化角
+        {
+
+            int DU, FEN;
+            double r, MIAO;
+            if (rad < 0)
+                r = (rad + 2 * Math.PI) * 180 / Math.PI;
+            else
+                r = rad * 180 / Math.PI;
+            DU = (int)r;
+            FEN = (int)((r - DU) * 60);
+            MIAO = ((r - DU) * 60 - FEN) * 60;
+            double[] D = { DU, FEN, MIAO };
+            return D;
+
+        }
+
+        public double huhuajiao(double rad)                 //小数格式弧化角
+        {
+           double DU;
+
+           if (rad < 0)
+           { DU = (rad + 2 * Math.PI) * 180 / Math.PI; }
+           else
+           { DU = rad * 180 / Math.PI; }
+           
+            return DU;
+        }
+
+        public double CMZS(double L)                  //中央子午线正算
+        {
+            double  rad;
+            int DU, DH;
+            if (radioButton1.Checked == true)
+            {
+                //r = (180 * 3600) / Math.PI;
+                DH = (int)((L * 180 / Math.PI  + 6) / 6);
+                DU = DH * 6 - 3;                
+                rad = DU * Math.PI  / 180;
+                return rad;
+            }
+            if (radioButton2.Checked == true)
+            {
+                //r = (180 * 3600) / Math.PI;
+                DH = (int)((L * 180 / Math.PI  +1.5) / 3);
+                DU = DH * 3;
+                rad = DU * Math.PI  / 180;
+                return rad;
+            }
+            return 0;
+
+        }
+
+        public double CMFS(double DH)                   //中央子午线反算
+        {
+            double DU, rad, r;
+            if (radioButton3.Checked == true)
+            {
+                DU = DH * 6 - 3;
+                r = (180 * 3600) / Math.PI;
+                rad = (DU * 3600) / r;
+                return rad;
+            }
+            if (radioButton4.Checked == true)
+            {
+                DU = DH * 3;
+                r = (180 * 3600) / Math.PI;
+                rad = (DU * 3600) / r;
+                return rad;
+            }
+            return 0;
+
+        }
+
+
+
+        private void 打开ToolStripMenuItem_Click(object sender, EventArgs e) //正算文件读取
+        {
+            if (tabControl2.SelectedTab == tabPage3)
+            { dataGridView1.Rows.Clear(); }
+            if (tabControl2.SelectedTab == tabPage4)
+            { dataGridView3.Rows.Clear(); }
+            using (OpenFileDialog dlgText = new OpenFileDialog())
+            {
+                dlgText.Filter = "文本文件|*.txt";
+                dlgText.Title = "打开文件";
+                if (dlgText.ShowDialog() == DialogResult.OK)
+                {
+                    
+                    using (StreamReader reader = new StreamReader(dlgText.FileName, Encoding.Default))
+                    {
+                        while (!reader.EndOfStream)
+                        {
+                            //string[] data = reader.ReadLine().Replace(",","-").Split('-');
+                            string[] data = reader.ReadLine().Split(' ');
+                            if (tabControl2.SelectedTab == tabPage3)
+                            {
+                                if (data.Length == 6)
+                                {
+                                    this.dataGridView1.Rows.Add(data);
+
+                                }
+                                else
+                                {
+                                    MessageBox.Show("文件内容格式不正确，请确保正确的格式");
+                                    return;
+                                }
+                            }
+                            if (tabControl2.SelectedTab == tabPage4)
+                            {
+                                if (data.Length == 2)
+                                {
+
+                                    this.dataGridView3.Rows.Add(data);
+
+                                }
+                                else
+                                {
+                                    MessageBox.Show("文件内容格式不正确，请确保正确的格式");
+                                    return;
+                                }
+                            }
+                                             
+                        }
+                    }
+                    MessageBox.Show("打开成功");
+                }
+            }
+        }
+
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)//正算坐标系选择
+        {
+            double a, b;
+            if (comboBox1.Text == "CGCS2000坐标系")
+            {
+                a = 6378137;
+                b = 6356752.3141;
+                textBox1.Text = a.ToString();
+                textBox2.Text = b.ToString();
+            }
+            if (comboBox1.Text == "1980西安坐标系")
+            {
+                a = 6378140;
+                b = 6356755.2882;
+                textBox1.Text = a.ToString();
+                textBox2.Text = b.ToString();
+            }
+            if (comboBox1.Text == "北京54坐标系")
+            {
+                a = 6378245;
+                b = 6356863.0188;
+                textBox1.Text = a.ToString();
+                textBox2.Text = b.ToString();
+            }
+        }
+
+        public double 度分秒正算(double a, double b)                          //度分秒格式正算
+        {
+            
+                double N, B, L, L0, a0, a2, a4, a6, a8, m0, m2, m4, m6, m8, X, t, n, l, s;
+                double Bd = 0, Bm = 0, Bs = 0;
+                double Ld = 0, Lm = 0, Ls = 0;
+                double[] x = new double[dataGridView1.Rows.Count];
+                double[] y = new double[dataGridView1.Rows.Count];
+                double[] DH = new double[dataGridView1.Rows.Count];
+
+                for (int i = 0; i < dataGridView1.Rows.Count - 1; i++)
+                {
+
+                    Bd = Convert.ToDouble(dataGridView1.Rows[i].Cells[0].Value);
+                    Bm = Convert.ToDouble(dataGridView1.Rows[i].Cells[1].Value);
+                    Bs = Convert.ToDouble(dataGridView1.Rows[i].Cells[2].Value);
+                    Ld = Convert.ToDouble(dataGridView1.Rows[i].Cells[3].Value);
+                    Lm = Convert.ToDouble(dataGridView1.Rows[i].Cells[4].Value);
+                    Ls = Convert.ToDouble(dataGridView1.Rows[i].Cells[5].Value);
+
+                    B = jiao2hu(Bd, Bm, Bs);
+                    L = jiao2hu(Ld, Lm, Ls);
+                    L0 = CMZS(L);
+
+                    s = (Math.Sqrt((a * a) - (b * b))) / a;
+                    m0 = a * (1.0 - s * s);
+                    m2 = 3.0 * s * s * m0 / 2;
+                    m4 = 5.0 * s * s * m2 / 4;
+                    m6 = 7.0 * s * s * m4 / 6;
+                    m8 = 9.0 * s * s * m6 / 8;
+                    a0 = m0 + (1.0 / 2) * m2 + (3.0 / 8) * m4 + (5.0 / 16) * m6 + (35.0 / 128) * m8;
+                    a2 = (1.0 / 2) * m2 + (1.0 / 2) * m4 + (15.0 / 32) * m6 + (7.0 / 16) * m8;
+                    a4 = (1.0 / 8) * m4 + (3.0 / 16) * m6 + (7.0 / 32) * m8;
+                    a6 = (1.0 / 32) * m6 + (1.0 / 16) * m8;
+                    a8 = (1.0 / 128) * m8;
+
+                    N = a / (Math.Sqrt(1.0 - s * s * Math.Sin(B) * Math.Sin(B)));
+                    X = a0 * B - a2 * Math.Sin(2 * B) / 2.0 + a4 * Math.Sin(4 * B) / 4.0 - a6 * Math.Sin(6 * B) / 6.0 + a8 * Math.Sin(8 * B) / 8.0;
+
+                    l = L - L0;
+                    t = Math.Tan(B);
+                    n = ((Math.Sqrt((a * a) - (b * b))) / b) * Math.Cos(B);
+
+                    x[i] = X + (N * Math.Sin(B) * Math.Cos(B) * l * l / 2.0 + N * Math.Sin(B) * Math.Pow(Math.Cos(B), 3) * (5 - t * t + 9 * n * n + 4 * Math.Pow(n, 4)) * Math.Pow(l, 4) / 24.0d + N * Math.Sin(B) * Math.Pow(Math.Cos(B), 3) * (61 - 58 * t * t + Math.Pow(t, 4)) * Math.Pow(l, 6) / 720.0);
+                    y[i] = 500000 + N * Math.Cos(B) * l + N / 6.0 * (1 - t * t + n * n) * Math.Pow(Math.Cos(B), 3) *Math.Pow(l, 3) + N / 120.0 * (5 - 18 * t * t + Math.Pow(t, 4) + 14 * n * n - 58 * n * n * t * t) * Math.Pow(Math.Cos(B), 5) * Math.Pow(l, 5);
+
+                    if (radioButton1.Checked == true)
+                    { DH[i] = (int)((L0 * 180 / Math.PI  + 6) / 6); }
+                    if (radioButton2.Checked == true)
+                    { DH[i] = (int)((L0 * 180 / Math.PI + 1.5) / 3); }
+
+                    dataGridView1.Rows[i].Cells[6].Value = x[i].ToString("0.000000");
+                    dataGridView1.Rows[i].Cells[7].Value = y[i].ToString("0.000000");
+                    dataGridView1.Rows[i].Cells[8].Value = DH[i];
+
+                } 
+                return 0;
+            
+        }
+
+        public double 小数正算(double a, double b)                            //小数格式正算
+        {
+            
+                double N, B = 0, L = 0, L0, a0, a2, a4, a6, a8, m0, m2, m4, m6, m8, X, t, n, l, s;
+                double[] x = new double[dataGridView3.Rows.Count];
+                double[] y = new double[dataGridView3.Rows.Count];
+                double[] DH = new double[dataGridView3.Rows.Count];
+                for (int i = 0; i <= dataGridView3.Rows.Count - 2; i++)
+                {
+
+                    B = Convert.ToDouble(dataGridView3.Rows[i].Cells[0].Value);
+                    L = Convert.ToDouble(dataGridView3.Rows[i].Cells[1].Value);
+
+                    
+                    B = jiaohuahu(B);
+                    L = jiaohuahu(L);
+                    L0 = CMZS(L);
+
+                    s = (Math.Sqrt((a * a) - (b * b))) / a;
+                    m0 = a * (1.0 - s * s);
+                    m2 = 3.0 * s * s * m0 / 2;
+                    m4 = 5.0 * s * s * m2 / 4;
+                    m6 = 7.0 * s * s * m4 / 6;
+                    m8 = 9.0 * s * s * m6 / 8;
+                    a0 = m0 + (1.0 / 2) * m2 + (3.0 / 8) * m4 + (5.0 / 16) * m6 + (35.0 / 128) * m8;
+                    a2 = (1.0 / 2) * m2 + (1.0 / 2) * m4 + (15.0 / 32) * m6 + (7.0 / 16) * m8;
+                    a4 = (1.0 / 8) * m4 + (3.0 / 16) * m6 + (7.0 / 32) * m8;
+                    a6 = (1.0 / 32) * m6 + (1.0 / 16) * m8;
+                    a8 = (1.0 / 128) * m8;
+
+                    N = a / (Math.Sqrt(1.0 - s * s * Math.Sin(B) * Math.Sin(B)));
+                    X = a0 * B - a2 * Math.Sin(2 * B) / 2.0 + a4 * Math.Sin(4 * B) / 4.0 - a6 * Math.Sin(6 * B) / 6.0 + a8 * Math.Sin(8 * B) / 8.0;
+
+                    l = L - L0;
+                    t = Math.Tan(B);
+                    n = ((Math.Sqrt((a * a) - (b * b))) / b) * Math.Cos(B);
+
+                    x[i] = X + (N * Math.Sin(B) * Math.Cos(B) * l * l / 2.0 + N * Math.Sin(B) * Math.Pow(Math.Cos(B), 3) * (5 - t * t + 9 * n * n + 4 * Math.Pow(n, 4)) * Math.Pow(l, 4) / 24.0d + N * Math.Sin(B) * Math.Pow(Math.Cos(B), 3) * (61 - 58 * t * t + Math.Pow(t, 4)) * Math.Pow(l, 6) / 720.0);
+                    y[i] = 500000 + N * Math.Cos(B) * l + N / 6.0 * (1 - t * t + n * n) * Math.Pow(Math.Cos(B), 3) * Math.Pow(l, 3) + N / 120.0 * (5 - 18 * t * t + Math.Pow(t, 4) + 14 * n * n - 58 * n * n * t * t) * Math.Pow(Math.Cos(B), 5) * Math.Pow(l, 5);
+                    
+                    if (radioButton1.Checked == true)
+                    { DH[i] = (int)((L0 * 180 / Math.PI + 6) / 6); }
+                    if (radioButton2.Checked == true)
+                    { DH[i] = (int)((L0 * 180 / Math.PI + 1.5) / 3); }
+
+                    dataGridView3.Rows[i].Cells[2].Value = x[i];
+                    dataGridView3.Rows[i].Cells[3].Value = y[i];
+                    dataGridView3.Rows[i].Cells[4].Value = DH[i];
+
+                }
+            return 0;
+        }
+        
+        private void 点击计算ToolStripMenuItem_Click(object sender, EventArgs e)//点击正算
+        {
+            double a, b;
+            if (tabControl2.SelectedTab == tabPage3)
+            {
+                if (dataGridView1.Rows.Count == 1)
+                {
+                    MessageBox.Show("无法计算，数据为空");
+                    return;
+                }
+                if (radioButton1.Checked == false && radioButton2.Checked == false)
+                {
+                    MessageBox.Show("请选择分带方式");
+                }
+                if (comboBox1.SelectedIndex == -1)
+                {
+                    MessageBox.Show("请选择坐标系");
+                }
+
+                else
+                {
+                    if (comboBox1.Text == "CGCS2000坐标系")
+                    {
+                        a = 6378137;
+                        b = 6356752.3141;
+                        度分秒正算(a, b);
+                    }
+                    if (comboBox1.Text == "1980西安坐标系")
+                    {
+                        a = 6378140;
+                        b = 6356755.2882;
+                        度分秒正算(a, b);
+                    }
+
+                    if (comboBox1.Text == "北京54坐标系")
+                    {
+                        a = 6378245;
+                        b = 6356863.0188;
+                        度分秒正算(a, b);
+                    }
+                    MessageBox.Show("计算成功");
+                }
+            }
+
+            if (tabControl2.SelectedTab == tabPage4)
+            {
+                if (dataGridView3.Rows.Count == 1)
+                {
+                    MessageBox.Show("无法计算，数据为空");
+                    return;
+                }
+                if (radioButton1.Checked == false && radioButton2.Checked == false)
+                {
+                    MessageBox.Show("请选择分带方式");
+                }
+                if (comboBox1.SelectedIndex == -1)
+                {
+                    MessageBox.Show("请选择坐标系");
+                }
+
+                else
+                {
+
+                    if (comboBox1.Text == "CGCS2000坐标系")
+                    {
+                        a = 6378137;
+                        b = 6356752.3141;
+                        小数正算(a, b);
+
+                    }
+                    if (comboBox1.Text == "1980西安坐标系")
+                    {
+                        a = 6378140;
+                        b = 6356755.2882;
+                        小数正算(a, b);
+
+                    }
+
+                    if (comboBox1.Text == "北京54坐标系")
+                    {
+                        a = 6378245;
+                        b = 6356863.0188;
+                        小数正算(a, b);
+
+                    }
+                    MessageBox.Show("计算成功");
+                }
+            }
+        }
+
+        private void 保存ToolStripMenuItem_Click(object sender, EventArgs e)//正算结果保存
+        {
+            string outFilePath = "";
+            if (tabControl2.SelectedTab == tabPage3)
+            {
+                if (dataGridView1 == null || dataGridView1.Rows.Count == 1)
+                {
+                    MessageBox.Show("数据不能为空！");
+                    return;
+                }
+            }
+            if (tabControl2.SelectedTab == tabPage4)
+            {
+                if (dataGridView3 == null || dataGridView3.Rows.Count == 1)
+                {
+                    MessageBox.Show("数据不能为空！");
+                    return;
+                }
+            }
+            using (SaveFileDialog sf = new SaveFileDialog())
+            {
+                sf.Filter = "txt文件|*.txt";
+                sf.AddExtension = true;
+                sf.Title = "保存文件";
+                if (sf.ShowDialog() == DialogResult.OK)
+                {
+                    string saveFilename = sf.FileName;
+                    if (!string.IsNullOrEmpty(saveFilename))
+                    {
+                        outFilePath = sf.FileName;
+                    }
+                }
+                if (outFilePath == "")
+                {
+                    //MessageBox.Show("保存路径不存在！");
+                    return;
+                }
+
+
+                FileStream jg = new FileStream(outFilePath, FileMode.OpenOrCreate);
+                StreamWriter sw = new StreamWriter(jg, System.Text.Encoding.Unicode);
+                StringBuilder strBuilder = new StringBuilder();
+                
+                if (tabControl2.SelectedTab == tabPage3)
+                {
+                    try
+                    {
+                        for (int i = 0; i < dataGridView1.Rows.Count - 1; i++)
+                        {
+                            strBuilder = new StringBuilder();
+                            //for (int j = 6; j < dataGridView1.Columns.Count-1; j++)
+                            //{
+                                strBuilder.Append(dataGridView1.Rows[i].Cells[6].Value.ToString()+ " " + dataGridView1.Rows[i].Cells[7].Value.ToString() + " " + dataGridView1.Rows[i].Cells[8].Value.ToString());
+                                
+                            //}
+                            sw.WriteLine(strBuilder.ToString());
+                        }
+                    }
+
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.Message);
+                    }
+                    finally
+                    {
+                        sw.Flush();
+                        sw.Close();
+                        jg.Close();
+                        MessageBox.Show("保存成功", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+
+                }
+                if (tabControl2.SelectedTab==tabPage4)
+                {
+                    try
+                    {
+                        for (int i = 0; i < dataGridView3.Rows.Count - 1; i++)
+                        {
+                            strBuilder = new StringBuilder();
+                            strBuilder.Append(dataGridView3.Rows[i].Cells[2].Value.ToString() + " " + dataGridView3.Rows[i].Cells[3].Value.ToString() + " " + dataGridView3.Rows[i].Cells[4].Value.ToString());
+                            sw.WriteLine(strBuilder.ToString());
+                        }
+                    }
+
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.Message);
+                    }
+                    finally
+                    {
+                        sw.Flush();
+                        sw.Close();
+                        jg.Close();
+                        MessageBox.Show("保存成功", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+
+                }
+
+            }
+        }
+        
+        private void 清除数据ToolStripMenuItem_Click(object sender, EventArgs e)//清除数据
+        {
+            if (tabControl2.SelectedTab == tabPage3)
+            { dataGridView1.Rows.Clear(); }
+            if (tabControl2.SelectedTab == tabPage4)
+            { dataGridView3.Rows.Clear(); }
+            textBox1.Clear();
+            textBox2.Clear();
+            comboBox1.SelectedIndex = -1;
+            radioButton1.Checked = false;
+            radioButton2.Checked = false;
+
+        }
+        
+        private void 退出ToolStripMenuItem_Click(object sender, EventArgs e)//关闭窗口
+        {
+            dataGridView1.Rows.Clear();
+            dataGridView3.Rows.Clear();
+            textBox1.Clear();
+            textBox2.Clear();
+            comboBox1.SelectedIndex = -1;
+            radioButton1.Checked = false;
+            radioButton2.Checked = false;
+            if (DialogResult.Yes == MessageBox.Show("是否确认关闭？", "提示",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Information))
+            {
+                for (double d = 1; d > 0; d = d - 0.25)
+                {
+                    System.Threading.Thread.Sleep(1);
+                    Application.DoEvents();
+                    this.Opacity = d;
+                    this.Refresh();
+                }
+                System.Environment.Exit(0);
+            }
+
+        }
+
+
+
+
+        private void 打开ToolStripMenuItem1_Click(object sender, EventArgs e)//反算文件读取
+        {
+            dataGridView2.Rows.Clear();
+            dataGridView4.Rows.Clear();
+            using (OpenFileDialog dlgText = new OpenFileDialog())
+            {
+                dlgText.Filter = "文本文件|*.txt";
+                dlgText.Title = "打开文件";
+                if (dlgText.ShowDialog() == DialogResult.OK)
+                {
+
+                    using (StreamReader reader = new StreamReader(dlgText.FileName, Encoding.Default))
+                    {
+                        while (!reader.EndOfStream)
+                        {
+                            string[] data = reader.ReadLine().Replace(" ", "-").Split('-');
+
+
+                            if (data.Length == 3)
+                            {
+                                this.dataGridView2.Rows.Add(data);
+                                this.dataGridView4.Rows.Add(data);
+
+                            }
+                            else
+                            {
+                                MessageBox.Show("文件内容格式不正确，请确保正确的格式");
+                                return;
+                            }                      
+                        }
+                    }
+                    MessageBox.Show("打开成功");
+                }
+            }
+        }
+
+        private void comboBox2_SelectedIndexChanged(object sender, EventArgs e)//反算坐标系选择
+        {
+            double a, b;
+            if (comboBox2.Text == "CGCS2000坐标系")
+            {
+                a = 6378137;
+                b = 6356752.3141;
+                textBox3.Text = b.ToString();
+                textBox4.Text = a.ToString();
+            }
+            if (comboBox2.Text == "1980西安坐标系")
+            {
+                a = 6378140;
+                b = 6356755.2882;
+                textBox3.Text = b.ToString();
+                textBox4.Text = a.ToString();
+            }
+            if (comboBox2.Text == "北京54坐标系")
+            {
+                a = 6378245;
+                b = 6356863.0188;
+                textBox3.Text = b.ToString();
+                textBox4.Text = a.ToString();
+            }
+        }
+
+        public double fansuan(double a, double b)                             //反算
+        {
+            double B, L, Mf, Nf, Bf, a0, a2, a4, a6, a8, m0, m2, m4, m6, m8, tf, nf, l, L0, s, r;
+            double B0, FB, Bn1, Bn;
+            double x = 0, y = 0, DH = 0;
+            for (int i = 0; i <= dataGridView2.Rows.Count - 2; i++)
+            {
+
+                x = Convert.ToDouble(dataGridView2.Rows[i].Cells[0].Value);
+                y = Convert.ToDouble(dataGridView2.Rows[i].Cells[1].Value);
+                DH = Convert.ToDouble(dataGridView2.Rows[i].Cells[2].Value);
+                L0 = CMFS(DH);
+                y = y - 500000;
+                r = (180 * 3600) / Math.PI;
+                s = (Math.Sqrt((a * a) - (b * b))) / a;
+                m0 = a * (1.0 - s * s);
+                m2 = (3.0 / 2) * s * s * m0;
+                m4 = (5.0 / 4) * s * s * m2;
+                m6 = (7.0 / 6) * s * s * m4;
+                m8 = (9.0 / 8) * s * s * m6;
+                a0 = m0 + (1.0 / 2) * m2 + (3.0 / 8) * m4 + (5.0 / 16) * m6 + (35.0 / 128) * m8;
+                a2 = (1.0 / 2) * m2 + (1.0 / 2) * m4 + (15.0 / 32) * m6 + (7.0 / 16) * m8;
+                a4 = (1.0 / 8) * m4 + (3.0 / 16) * m6 + (7.0 / 32) * m8;
+                a6 = (1.0 / 32) * m6 + (1.0 / 16) * m8;
+                a8 = (1.0 / 128) * m8;
+                B0 = x / a0;
+                FB = a2 / 2 * Math.Sin(2 * B0) - a4 / 4 * Math.Sin(4 * B0) + a6 / 6 * Math.Sin(6 * B0) + a8 / 8 * Math.Sin(8 * B0);
+                do
+                {
+                    Bn = B0;
+                    B0 = (x + FB) / a0;
+                    FB = a2 / 2 * Math.Sin(2 * B0) - a4 / 4 * Math.Sin(4 * B0) + a6 / 6 * Math.Sin(6 * B0) + a8 / 8 * Math.Sin(8 * B0);
+                    Bn1 = B0;
+                }
+                while (Math.Abs((Bn1 - Bn) * r) >= Math.Pow(10, -9));
+                Bf = Bn1;
+                Mf = a * (1 - s * s) * Math.Pow((Math.Sqrt(1 - s * s * Math.Sin(Bf) * Math.Sin(Bf))), -3);
+                Nf = a / (Math.Sqrt(1 - s * s * Math.Sin(Bf) * Math.Sin(Bf)));
+                tf = Math.Tan(Bf);
+                nf = ((Math.Sqrt((a * a) - (b * b))) / b) * Math.Cos(Bf);
+                B = Bf - tf * y * y / (2 * Mf * Nf) + tf * y * y * y * y / (24 * Mf * Nf * Nf * Nf) * (5 + 3 * tf * tf + nf * nf - 9 * nf * nf * tf * tf) - tf * Math.Pow(y, 6) * (61 + 90 * tf * tf + 45 * tf * tf * tf * tf) / (720 * Mf * Math.Pow(Nf, 5));
+                l = y / (Nf * Math.Cos(Bf)) - (1 + 2 * tf * tf + nf * nf) * y * y * y / (6 * Nf * Nf * Nf * Math.Cos(Bf)) + (5 + 28 * tf * tf + 24 * tf * tf * tf * tf) * Math.Pow(y, 5) / (120 * Math.Pow(Nf, 5) * Math.Cos(Bf));
+                L = L0 + l;
+                if (tabControl3.SelectedTab == tabPage5)
+                {
+                    double[] WD = hu2jiao(B);
+                    double[] JD = hu2jiao(L);
+                    dataGridView2.Rows[i].Cells[3].Value = WD[0].ToString();
+                    dataGridView2.Rows[i].Cells[4].Value = WD[1].ToString();
+                    dataGridView2.Rows[i].Cells[5].Value = WD[2].ToString("0.00");
+                    dataGridView2.Rows[i].Cells[6].Value = JD[0].ToString();
+                    dataGridView2.Rows[i].Cells[7].Value = JD[1].ToString();
+                    dataGridView2.Rows[i].Cells[8].Value = JD[2].ToString("0.00");
+                }
+                if (tabControl3.SelectedTab == tabPage6)
+                {
+                    double WD = huhuajiao(B);
+                    double JD = huhuajiao(L);
+                    dataGridView4.Rows[i].Cells[3].Value = WD.ToString("0.000000");
+                    dataGridView4.Rows[i].Cells[4].Value = JD.ToString("0.000000");
+                }
+            }
+            return 0;
+        }
+        
+        private void 点击计算ToolStripMenuItem1_Click(object sender, EventArgs e)//点击反算
+        {
+            if (dataGridView2.Rows.Count == 1)
+            {
+                MessageBox.Show("无法计算，数据为空");
+                return;
+            }
+
+            if (radioButton3.Checked == false && radioButton4.Checked == false)
+            {
+                MessageBox.Show("请选择分带方式");
+            }
+            if (comboBox2.SelectedIndex == -1)
+            {
+                MessageBox.Show("请选择坐标系");
+            }
+            
+            else
+            {
+                
+                double a, b;
+
+                if (comboBox2.Text == "CGCS2000坐标系")
+                {
+                    a = 6378137;
+                    b = 6356752.3141;
+                    fansuan(a, b);   
+                }
+                if (comboBox2.Text == "1980西安坐标系")
+                {
+                    a = 6378140;
+                    b = 6356755.2882;
+                    fansuan(a, b);
+                }
+                if (comboBox2.Text == "北京54坐标系")
+                {
+                    a = 6378245;
+                    b = 6356863.0188;
+                    fansuan(a, b);     
+                }
+                MessageBox.Show("计算成功");
+            }
+        }
+
+        private void 保存ToolStripMenuItem1_Click(object sender, EventArgs e)//反算结果保存
+        {
+            string outFilePath = "";
+            if (tabControl3.SelectedTab == tabPage5)
+            {
+                if (dataGridView2 == null || dataGridView2.Rows.Count == 1)
+                {
+                    MessageBox.Show("数据不能为空！");
+                    return;
+                }
+            }
+            if (tabControl3.SelectedTab == tabPage6)
+            {
+                if (dataGridView4 == null || dataGridView4.Rows.Count == 1)
+                {
+                    MessageBox.Show("数据不能为空！");
+                    return;
+                }
+            }
+            using (SaveFileDialog sf = new SaveFileDialog())
+            {
+                sf.Filter = "txt文件|*.txt";
+                sf.AddExtension = true;
+                sf.Title = "保存文件";
+                if (sf.ShowDialog() == DialogResult.OK)
+                {
+                    string saveFilename = sf.FileName;
+                    if (!string.IsNullOrEmpty(saveFilename))
+                    {
+                        outFilePath = sf.FileName;
+                    }
+                }
+                if (outFilePath == "")
+                {
+                    //MessageBox.Show("保存路径不存在！");
+                    return;
+                }
+
+                FileStream jg = new FileStream(outFilePath, FileMode.OpenOrCreate);
+                StreamWriter sw = new StreamWriter(jg, System.Text.Encoding.Unicode);
+                StringBuilder strBuilder = new StringBuilder();
+
+                if (tabControl3.SelectedTab == tabPage5)
+                {
+                    try
+                    {
+                        for (int i = 0; i < dataGridView2.Rows.Count - 1; i++)
+                        {
+                            strBuilder = new StringBuilder();
+                            for (int j = 3; j < dataGridView2.Columns.Count; j++)
+                            {
+                                strBuilder.Append(dataGridView2.Rows[i].Cells[3].Value.ToString() + " ");
+                            }
+                            sw.WriteLine(strBuilder.ToString());
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.Message);
+                    }
+                    finally
+                    {
+                        sw.Flush();
+                        sw.Close();
+                        jg.Close();
+                        MessageBox.Show("保存成功", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+
+                }
+                if (tabControl3.SelectedTab == tabPage6)
+                {
+                    try
+                    {
+                        for (int i = 0; i < dataGridView4.Rows.Count - 1; i++)
+                        {
+                            strBuilder = new StringBuilder();
+                            //for (int j = 3; j < dataGridView4.Columns.Count; j++)
+                            //{
+                                strBuilder.Append(dataGridView4.Rows[i].Cells[3].Value.ToString() + " " + dataGridView4.Rows[i].Cells[4].Value.ToString());
+                            //}
+                            sw.WriteLine(strBuilder.ToString());
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.Message);
+                    }
+                    finally
+                    {
+                        sw.Flush();
+                        sw.Close();
+                        jg.Close();
+                        MessageBox.Show("保存成功", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+
+                }
+            }
+
+        }
+
+        private void 清除数据ToolStripMenuItem1_Click(object sender, EventArgs e)//清除数据
+        {
+            if (tabControl3.SelectedTab == tabPage5)
+            { dataGridView2.Rows.Clear(); }
+            if (tabControl3.SelectedTab == tabPage6)
+            { dataGridView4.Rows.Clear(); }
+            textBox3.Clear();
+            textBox4.Clear();
+            comboBox2.SelectedIndex = -1;
+            radioButton3.Checked = false;
+            radioButton4.Checked = false;
+
+        }
+
+        private void 退出ToolStripMenuItem1_Click(object sender, EventArgs e)//关闭窗口
+        {
+            dataGridView2.Rows.Clear();
+            dataGridView4.Rows.Clear();
+            textBox3.Clear();
+            textBox4.Clear();
+            comboBox2.SelectedIndex = -1;
+            radioButton3.Checked = false;
+            radioButton4.Checked = false;
+            if (DialogResult.Yes == MessageBox.Show("是否确认关闭？", "提示",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Information))
+            {
+                for (double d = 1; d > 0; d = d - 0.25)
+                {
+                    System.Threading.Thread.Sleep(1);
+                    Application.DoEvents();
+                    this.Opacity = d;
+                    this.Refresh();
+                }
+                System.Environment.Exit(0);
+            }
+        }
+       
+ 
+
+
+        private void button1_Click_1(object sender, EventArgs e)
+        {
+            if (tabControl2.SelectedTab  == tabPage3)
+            {
+                for (int i = dataGridView1.SelectedRows.Count; i > 0; i--)
+                {
+
+                    while (dataGridView1.Rows.Count == 1)
+                    {
+                        MessageBox.Show("数据已全部清除");
+                        return;
+                    }
+                    while (dataGridView1.SelectedRows[i - 1].Index == dataGridView1.Rows.Count - 1)
+                    {
+                        //dataGridView1.Rows.RemoveAt(dataGridView1.SelectedRows[i - 1].Index);
+                        return;
+                    }
+                    dataGridView1.Rows.RemoveAt(dataGridView1.SelectedRows[i - 1].Index);
+
+                }
+            }
+
+            if (tabControl2.SelectedTab == tabPage4)
+            {
+                for (int i = dataGridView3.SelectedRows.Count; i > 0; i--)
+                {
+
+                    while (dataGridView3.Rows.Count == 1)
+                    {
+                        MessageBox.Show("数据已全部清除");
+                        return;
+                    }
+                    while (dataGridView3.SelectedRows[i - 1].Index == dataGridView3.Rows.Count - 1)
+                    {
+                        //dataGridView1.Rows.RemoveAt(dataGridView1.SelectedRows[i - 1].Index);
+                        return;
+                    }
+                    dataGridView3.Rows.RemoveAt(dataGridView3.SelectedRows[i - 1].Index);
+
+                }
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (tabControl3.SelectedTab == tabPage5)
+            {
+                for (int i = dataGridView2.SelectedRows.Count; i > 0; i--)
+                {
+
+                    while (dataGridView2.Rows.Count == 1)
+                    {
+                        MessageBox.Show("数据已全部清除");
+                        return;
+                    }
+                    while (dataGridView2.SelectedRows[i - 1].Index == dataGridView2.Rows.Count - 1)
+                    {
+                        //dataGridView2.Rows.RemoveAt(dataGridView1.SelectedRows[i - 1].Index);
+                        return;
+                    }
+                    dataGridView2.Rows.RemoveAt(dataGridView2.SelectedRows[i - 1].Index);
+
+                }
+            }
+            if (tabControl3.SelectedTab == tabPage6)
+            {
+                for (int i = dataGridView4.SelectedRows.Count; i > 0; i--)
+                {
+
+                    while (dataGridView4.Rows.Count == 1)
+                    {
+                        MessageBox.Show("数据已全部清除");
+                        return;
+                    }
+                    while (dataGridView4.SelectedRows[i - 1].Index == dataGridView4.Rows.Count - 1)
+                    {
+                        //dataGridView2.Rows.RemoveAt(dataGridView1.SelectedRows[i - 1].Index);
+                        return;
+                    }
+                    dataGridView4.Rows.RemoveAt(dataGridView4.SelectedRows[i - 1].Index);
+
+                }
+            }
+        }
+
+        private void 方位角计算器ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Form2 mainForm = new Form2();
+            mainForm.StartPosition = FormStartPosition.CenterScreen;
+            mainForm.Show (this);
+        }
+
+        private void 方位角计算器ToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+         
+            Form2 mainForm = new Form2();
+            mainForm.StartPosition = FormStartPosition.CenterScreen;
+            mainForm.Show(this);
+        }
+
+        
+
+        
+
+        
+
+       
+
+        
+
+       
+
+
+        
+            
+
+       
+
+        
+        
+    }
+}
